@@ -34,6 +34,27 @@
       "description": "دلائل نقل أو استخراج كميات بيانات غير طبيعية",
       "score": 9,
       "category": "تسريب بيانات"
+    },
+    {
+      "name": "Credential Dumping",
+      "pattern": "mimikatz|hashdump|lsa\\.dmp|sam\\s+dump",
+      "description": "محاولات استخراج بيانات الاعتماد وكلمات المرور",
+      "score": 10,
+      "category": "أمن الحسابات"
+    },
+    {
+      "name": "Advanced Persistent Threat (APT) Indicators",
+      "pattern": "apt\\s+group|custom\\s+malware|c2\\s+server",
+      "description": "دلائل على نشاط مجموعات تهديد متقدمة أو خبيثة مستهدفة",
+      "score": 10,
+      "category": "تهديد متقدم"
+    },
+    {
+      "name": "Exploit Kit Usage",
+      "pattern": "exploit\\s+kit|remote\\s+code\\s+execution|vulnerability\\s+exploit",
+      "description": "استخدام أدوات استغلال ثغرات لنظام أو تطبيق",
+      "score": 10,
+      "category": "استغلال ثغرات"
     }
   ],
   "medium_risk_patterns": [
@@ -78,6 +99,27 @@
       "description": "عمليات غير متوقعة أو تعطل خدمات قد يدل على استغلال/برمجيات ضارة",
       "score": 5,
       "category": "أداء/أمان"
+    },
+    {
+      "name": "Suspicious Script Execution",
+      "pattern": "powershell\\s+-nop|cmd\\.exe /c|bash -c",
+      "description": "تشغيل سكربتات مشبوهة أو غير عادية على الأنظمة",
+      "score": 5,
+      "category": "هجوم تطبيقي"
+    },
+    {
+      "name": "Brute Force SSH",
+      "pattern": "ssh\\s+failed|invalid\\s+ssh\\s+login|too\\s+many\\s+authentication\\s+failures",
+      "description": "محاولات تخمين كلمة مرور SSH متكررة",
+      "score": 5,
+      "category": "هجوم شبكي"
+    },
+    {
+      "name": "Suspicious Registry Change",
+      "pattern": "reg\\s+add|registry\\s+modified|hkey_.*\\s+set",
+      "description": "تغييرات مشبوهة في سجل النظام قد تشير لمحاولات اختراق",
+      "score": 5,
+      "category": "أمان النظام"
     }
   ],
   "low_risk_patterns": [
@@ -113,6 +155,27 @@
       "name": "User Logout / Login Success",
       "pattern": "user\\s+logged\\s+in|login\\s+success|user\\s+logged\\s+out",
       "description": "أحداث دخول/خروج طبيعية للمستخدمين (للتقارير)",
+      "score": 0,
+      "category": "سجل النشاط"
+    },
+    {
+      "name": "Configuration Change",
+      "pattern": "config\\s+updated|settings\\s+changed",
+      "description": "تغييرات في الإعدادات أو التكوينات الطبيعية أو المشبوهة",
+      "score": 1,
+      "category": "مراقبة النظام"
+    },
+    {
+      "name": "Login from New Location",
+      "pattern": "login\\s+from\\s+new\\s+ip|login\\s+from\\s+unknown\\s+device",
+      "description": "محاولات تسجيل دخول من موقع أو جهاز غير معروف",
+      "score": 1,
+      "category": "مراقبة المستخدم"
+    },
+    {
+      "name": "Software Update / Patch Installed",
+      "pattern": "update\\s+installed|patch\\s+applied",
+      "description": "تحديث برامج أو تطبيقات النظام (للتقارير/متابعة النشاط)",
       "score": 0,
       "category": "سجل النشاط"
     }
