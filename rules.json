@@ -2,56 +2,119 @@
   "high_risk_patterns": [
     {
       "name": "SQL Injection",
-      "pattern": "sql\\s+injection",
-      "description": "محاولة حقن أوامر SQL خبيثة",
+      "pattern": "sql\\s+injection|union\\s+select|select\\s+.*\\s+from|\\b(drop|delete)\\s+table\\b|--",
+      "description": "محاولة حقن أوامر SQL خبيثة أو تعليمات حذف/استعلام مشبوهة",
       "score": 10,
       "category": "اختراق قواعد البيانات"
     },
     {
       "name": "Ransomware",
-      "pattern": "ransomware",
-      "description": "اكتشاف برامج الفدية",
+      "pattern": "ransomware|\\.locked|encrypt\\s+files|decrypt\\s+instructions",
+      "description": "دلائل نشاط برامج الفدية (تشفير ملفات/رسائل فدية)",
       "score": 10,
       "category": "برامج ضارة"
+    },
+    {
+      "name": "Remote Command Injection",
+      "pattern": "\\b(exec|system|popen|shell)\\b|;\\s*rm\\s+-rf\\s+|\\bcmd=\\b",
+      "description": "محاولات تنفيذ أوامر عن بعد أو سلاسل أوامر مشبوهة",
+      "score": 9,
+      "category": "هجوم تطبيق"
+    },
+    {
+      "name": "Cross-Site Scripting (XSS)",
+      "pattern": "<script\\b|javascript:|onerror=|onload=",
+      "description": "محاولات حقن سكربت عبر مدخلات (XSS)",
+      "score": 9,
+      "category": "هجوم تطبيق ويب"
+    },
+    {
+      "name": "Data Exfiltration (Large Upload/Transfer)",
+      "pattern": "upload\\s+completed|transfer\\s+completed|exfiltrate|data\\s+exfiltration",
+      "description": "دلائل نقل أو استخراج كميات بيانات غير طبيعية",
+      "score": 9,
+      "category": "تسريب بيانات"
     }
   ],
   "medium_risk_patterns": [
     {
       "name": "Failed Login",
-      "pattern": "failed\\s+login",
-      "description": "محاولات دخول فاشلة",
+      "pattern": "failed\\s+login|authentication\\s+failure|invalid\\s+user|login\\s+failure",
+      "description": "محاولات دخول فاشلة متكررة",
       "score": 5,
       "category": "محاولات وصول"
     },
     {
-      "name": "Malware",
-      "pattern": "malware",
-      "description": "برامج ضارة",
+      "name": "Malware / Trojan / Keylogger",
+      "pattern": "malware|trojan|keylogger|backdoor|botnet",
+      "description": "دلائل على برامج خبيثة عامة أو باب خلفي",
       "score": 5,
       "category": "برامج ضارة"
     },
     {
-      "name": "Unauthorized Access",
-      "pattern": "unauthorized\\s+access",
-      "description": "وصول غير مصرح به",
+      "name": "Unauthorized Access / Privilege Escalation",
+      "pattern": "unauthorized\\s+access|privilege\\s+escalation|access\\s+denied\\s+for\\s+user",
+      "description": "محاولات وصول غير مصرح بها أو تصعيد صلاحيات",
       "score": 5,
-      "category": "أمن الشبكات"
+      "category": "أمن النظام"
+    },
+    {
+      "name": "Port Scanning",
+      "pattern": "\\bnmap\\b|port\\s+scan|scan\\s+detected|suspicious\\s+scan",
+      "description": "كشف محاولات مسح المنافذ أو استخدام أدوات المسح",
+      "score": 5,
+      "category": "هجمات الشبكة"
+    },
+    {
+      "name": "Suspicious File Download",
+      "pattern": "https?://[^\\s\"'<>]+\\.(exe|scr|bat|zip|rar|msi)",
+      "description": "تنزيل ملفات تنفيذية أو أرشيفات مشبوهة عبر HTTP/HTTPS",
+      "score": 5,
+      "category": "شبكة/ملفات"
+    },
+    {
+      "name": "Suspicious Process",
+      "pattern": "\\b(process\\s+terminated|service\\s+crash|unexpected\\s+process)\\b",
+      "description": "عمليات غير متوقعة أو تعطل خدمات قد يدل على استغلال/برمجيات ضارة",
+      "score": 5,
+      "category": "أداء/أمان"
     }
   ],
   "low_risk_patterns": [
     {
       "name": "Warning",
-      "pattern": "warning",
-      "description": "تحذيرات نظام",
+      "pattern": "\\bwarning\\b|\\bwarn\\b",
+      "description": "تحذيرات نظام عامة",
       "score": 1,
       "category": "مراقبة النظام"
     },
     {
-      "name": "Timeout",
-      "pattern": "timeout",
-      "description": "انتهاء مهلة الاتصال",
+      "name": "Timeout / Connection Lost",
+      "pattern": "\\btimeout\\b|connection\\s+lost|connection\\s+timed\\s+out",
+      "description": "انتهاء مهلة الاتصال أو انقطاع الاتصالات",
+      "score": 1,
+      "category": "أداء الشبكة"
+    },
+    {
+      "name": "Disk Full / Low Disk Space",
+      "pattern": "disk\\s+full|no\\s+space|low\\s+disk\\s+space",
+      "description": "دلائل امتلاء القرص أو نقص المساحة",
       "score": 1,
       "category": "أداء النظام"
+    },
+    {
+      "name": "Service Crash / Process Terminated",
+      "pattern": "service\\s+crash|process\\s+terminated|segmentation\\s+fault",
+      "description": "تعطل خدمة أو عملية (مراقبة الأداء)",
+      "score": 1,
+      "category": "أداء النظام"
+    },
+    {
+      "name": "User Logout / Login Success",
+      "pattern": "user\\s+logged\\s+in|login\\s+success|user\\s+logged\\s+out",
+      "description": "أحداث دخول/خروج طبيعية للمستخدمين (للتقارير)",
+      "score": 0,
+      "category": "سجل النشاط"
     }
   ]
 }
