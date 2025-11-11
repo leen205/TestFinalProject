@@ -2,15 +2,15 @@ import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
 from tkinter import filedialog, messagebox
 import tkinter as tk
-from analysis import analyze_file  # import analysis function from analysis.py
+from analysis import analyze_file
 from reportgen import PDFReportGenerator
 import os
 
 class ForensicsToolApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Digital Forensics Tool")
-        self.root.geometry("900x600")
+        self.root.title("Cyber Digital Forensics Tool")
+        self.root.geometry("950x650")
         self.root.resizable(False, False)
 
         # ===== App Theme =====
@@ -19,8 +19,8 @@ class ForensicsToolApp:
         # ===== Title =====
         title = ttk.Label(
             root,
-            text="🔍 Integrated Digital Forensics Tool",
-            font=("Segoe UI", 20, "bold"),
+            text="🔍 Cyber Digital Forensics Tool",
+            font=("Segoe UI", 22, "bold"),
             bootstyle="info"
         )
         title.pack(pady=20)
@@ -58,24 +58,24 @@ class ForensicsToolApp:
             text="Analyze File",
             bootstyle="success-outline",
             command=self.run_analysis,
-            width=20
-        ).grid(row=0, column=0, padx=15)
+            width=22
+        ).grid(row=0, column=0, padx=12)
 
         ttk.Button(
             button_frame,
-            text="Generate Report (PDF)",
+            text="Generate PDF Report",
             bootstyle="warning-outline",
             command=self.generate_report,
-            width=20
-        ).grid(row=0, column=1, padx=15)
+            width=22
+        ).grid(row=0, column=1, padx=12)
 
         ttk.Button(
             button_frame,
             text="Clear Output",
             bootstyle="danger-outline",
             command=self.clear_output,
-            width=20
-        ).grid(row=0, column=2, padx=15)
+            width=22
+        ).grid(row=0, column=2, padx=12)
 
         # ===== Output Section =====
         ttk.Label(
@@ -84,12 +84,13 @@ class ForensicsToolApp:
 
         self.text_output = tk.Text(
             root,
-            height=20,
-            width=100,
-            bg="#1E1E1E",
-            fg="white",
+            height=22,
+            width=110,
+            bg="#1E1E2F",
+            fg="#00FFEA",  # Neon cyan for cyber feel
             insertbackground="white",
-            wrap="word"
+            wrap="word",
+            font=("Consolas", 11)
         )
         self.text_output.pack(padx=10, pady=5)
 
@@ -108,7 +109,7 @@ class ForensicsToolApp:
 
     # ===== File Browsing Function =====
     def browse_file(self):
-        file_path = filedialog.askopenfilename()
+        file_path = filedialog.askopenfilename(filetypes=[("All files", "*.*")])
         if file_path:
             self.selected_file_label.config(text=file_path)
             self.status.set(f"Selected file: {file_path}")
@@ -124,23 +125,45 @@ class ForensicsToolApp:
         self.status.set("Analyzing file...")
         self.text_output.delete(1.0, tk.END)
 
-        # Call the actual analysis function
         results = analyze_file(file_path)
-        self.analysis_results = results  # Save results for report
+        self.analysis_results = results
 
-        # Display results nicely
         if isinstance(results, dict):
-            for section, data in results.items():
-                self.text_output.insert(tk.END, f"--- {section} ---\n")
-                if isinstance(data, dict) and data:
-                    for key, value in data.items():
-                        self.text_output.insert(tk.END, f"{key}: {value}\n")
-                elif isinstance(data, list) and data:
-                    for item in data:
-                        self.text_output.insert(tk.END, f"- {item}\n")
-                else:
-                    self.text_output.insert(tk.END, "No entries found.\n")
-                self.text_output.insert(tk.END, "\n")
+            # ===== Basic Info =====
+            basic = results.get("basic_analysis", {})
+            self.text_output.insert(tk.END, "📄 Basic Information:\n", "header")
+            if basic:
+                for key, value in basic.items():
+                    self.text_output.insert(tk.END, f"• {key}: {value}\n")
+            else:
+                self.text_output.insert(tk.END, "No basic information found.\n")
+            self.text_output.insert(tk.END, "\n")
+
+            # ===== Suspicious Items =====
+            suspicious = results.get("suspicious_items", [])
+            self.text_output.insert(tk.END, "⚠️ Suspicious Items Detected:\n", "header")
+            if suspicious:
+                for item in suspicious:
+                    name = item.get("name", "Unknown")
+                    level = item.get("risk_level", "Unknown")
+                    self.text_output.insert(tk.END, f"• {name} | Risk Level: {level}\n")
+            else:
+                self.text_output.insert(tk.END, "No suspicious items detected.\n")
+            self.text_output.insert(tk.END, "\n")
+
+            # ===== Advanced Stats =====
+            advanced = results.get("advanced_stats", {})
+            self.text_output.insert(tk.END, "📈 Advanced Statistics:\n", "header")
+            if advanced:
+                for section, data in advanced.items():
+                    self.text_output.insert(tk.END, f"\n{section}:\n")
+                    if data:
+                        for key, value in data.items():
+                            self.text_output.insert(tk.END, f"  • {key}: {value}\n")
+                    else:
+                        self.text_output.insert(tk.END, "  No data available.\n")
+            else:
+                self.text_output.insert(tk.END, "No advanced statistics available.\n")
         else:
             self.text_output.insert(tk.END, "No analysis data returned.")
 
@@ -153,15 +176,18 @@ class ForensicsToolApp:
             self.status.set("Cannot generate report: no data.")
             return
 
-        # Ensure results folder exists
-        results_folder = os.path.join(os.getcwd(), "results")
-        os.makedirs(results_folder, exist_ok=True)
+        save_path = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            title="Save PDF Report As"
+        )
+        if not save_path:
+            self.status.set("Report generation cancelled.")
+            return
 
-        # Generate PDF report
         generator = PDFReportGenerator()
-        pdf_file = generator.generate_pdf(self.analysis_results, output_dir=results_folder)
-
-        messagebox.showinfo("Report", f"Report generated successfully!\nSaved as: {pdf_file}")
+        generator.generate_pdf(self.analysis_results, filename=save_path)
+        messagebox.showinfo("Report", f"Report generated successfully!\nSaved as: {save_path}")
         self.status.set("Report generated successfully!")
 
     # ===== Clear Output Function =====
