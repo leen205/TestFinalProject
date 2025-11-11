@@ -1,4 +1,4 @@
-# analysis.py
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Digital Forensics Analyzer (analysis.py)
@@ -109,6 +109,10 @@ class RuleManager:
 class FileManager:
     @staticmethod
     def read_file(path: str) -> str:
+        """
+        Read file content. Raises exceptions on failure.
+        Returns content as string.
+        """
         if not os.path.exists(path):
             raise FileNotFoundError(f"File not found: {path}")
         size = os.path.getsize(path)
@@ -122,6 +126,7 @@ class FileManager:
                     return f.read()
             except Exception as e:
                 last_exc = e
+        # fallback with replace
         with open(path, "r", encoding="utf-8", errors="replace") as f:
             return f.read()
 
@@ -147,41 +152,58 @@ class ForensicAnalyzer:
         }
 
     def search_suspicious_patterns(self, content: str) -> List[Dict[str, Any]]:
+        """
+        Search suspicious patterns and produce a human-friendly Arabic display line
+        for every matched rule. Preserves existing matching logic.
+        """
         rules = self.rule_manager.get_rules()
         found: List[Dict[str, Any]] = []
+        # mapping without colors/emojis as requested
         mapping = {
-            "high_risk_patterns": {"icon": "[!]", "level": "عالي الخطورة", "color": "red"},
-            "medium_risk_patterns": {"icon": "[~]", "level": "متوسط الخطورة", "color": "orange"},
-            "low_risk_patterns": {"icon": "[✓]", "level": "منخفض الخطورة", "color": "green"},
+            "high_risk_patterns": {"level": "عالي الخطورة"},
+            "medium_risk_patterns": {"level": "متوسط الخطورة"},
+            "low_risk_patterns": {"level": "منخفض الخطورة"},
         }
+
+        # Filter out INFO/DEBUG lines (same behaviour as prior code)
+        lines = content.splitlines()
+        filtered_lines = [l for l in lines if not re.search(r"\b(INFO|DEBUG)\b", l, re.IGNORECASE)]
+        text_for_search = "\n".join(filtered_lines)
 
         for category_key, meta in mapping.items():
             for rule in rules.get(category_key, []):
                 pattern = rule.get("pattern")
-                # تجاهل أسطر INFO وDEBUG
-                lines = content.splitlines()
-                filtered_lines = [l for l in lines if not re.search(r"\b(INFO|DEBUG)\b", l, re.IGNORECASE)]
-                for line in filtered_lines:
-                    try:
-                        matches = re.findall(pattern, line, flags=re.IGNORECASE)
-                    except re.error as e:
-                        logger.error(f"Invalid regex '{pattern}' in rule '{rule.get('name')}' - {e}")
-                        continue
-                    if matches:
-                        examples = matches[:5]
-                        found.append({
-                            "risk_icon": meta["icon"],
-                            "risk_level": meta["level"],
-                            "name": rule.get("name", "Unnamed"),
-                            "pattern": pattern,
-                            "count": len(matches),
-                            "score": int(rule.get("score", 1)),
-                            "description": rule.get("description", ""),
-                            "category": rule.get("category", ""),
-                            "examples": examples,
-                        })
-        # ترتيب حسب الخطورة والعدد
-        found.sort(key=lambda x: (x["score"], x["count"]), reverse=True)
+                try:
+                    matches = re.findall(pattern, text_for_search, flags=re.IGNORECASE)
+                except re.error as e:
+                    logger.error(f"Invalid regex '{pattern}' in rule '{rule.get('name')}' - {e}")
+                    continue
+                if matches:
+                    examples = []
+                    # handle capture groups returning tuples
+                    for m in matches[:5]:
+                        if isinstance(m, (list, tuple)):
+                            examples.append(" ".join([str(x) for x in m if x]))
+                        else:
+                            examples.append(str(m))
+                    display_line = f"{meta['level']} - {rule.get('name', 'Unnamed')} ({rule.get('category', '')})"
+                    item = {
+                        "display_line": display_line,            # Arabic human-friendly line for reports/console
+                        "risk_level": meta["level"],
+                        "name": rule.get("name", "Unnamed"),
+                        "pattern": pattern,
+                        "count": len(matches),
+                        "score": int(rule.get("score", 1)),
+                        "description": rule.get("description", ""),
+                        "category": rule.get("category", ""),
+                        "examples": examples,
+                    }
+                    found.append(item)
+                    # log the Arabic display line (no colors/emojis)
+                    logger.info(f"عُثر على: {display_line} ← مرات الظهور: {len(matches)}")
+
+        # sort by score*count desc (same ranking intention)
+        found.sort(key=lambda x: (x["score"] * x["count"]), reverse=True)
         return found
 
     def advanced_statistical_analysis(self, content: str) -> Dict[str, Any]:
@@ -189,15 +211,15 @@ class ForensicAnalyzer:
         suspicious = self.search_suspicious_patterns(content)
         total_risk_score = sum(item["score"] * item["count"] for item in suspicious)
 
-        # تحديد مستوى الخطورة
+        # determine overall risk (use simple thresholds)
         if total_risk_score >= Config.RISK_THRESHOLDS["HIGH"]:
-            overall_risk = "🟥 عالي"
+            overall_risk = "عالي"
             action_required = "نعم - تدخل فوري مطلوب"
         elif total_risk_score >= Config.RISK_THRESHOLDS["MEDIUM"]:
-            overall_risk = "🟨 متوسط"
+            overall_risk = "متوسط"
             action_required = "مراقبة مستمرة"
         else:
-            overall_risk = "🟩 منخفض / ✅ سليم"
+            overall_risk = "منخفض / سليم"
             action_required = "لا - الملف سليم"
 
         return {
@@ -213,7 +235,20 @@ class ForensicAnalyzer:
         }
 
     def analyze_file(self, file_path: str) -> Dict[str, Any]:
+        """
+        Primary analyzer method on the ForensicAnalyzer instance.
+        Reads the file, runs basic analysis, pattern search and advanced stats,
+        returning a unified dictionary.
+        """
+        # read file content (FileManager.read_file expected to return string)
         content = self.file_manager.read_file(file_path)
+        # if FileManager implementation returned a dict (older/newer variants), handle it:
+        if isinstance(content, dict):
+            # if dict variant includes error, raise
+            if content.get("error"):
+                raise ValueError(f"File read error: {content.get('error')}")
+            content = content.get("text") or ""
+
         basic = self.analyze_log_basic(content)
         suspicious = self.search_suspicious_patterns(content)
         advanced = self.advanced_statistical_analysis(content)
@@ -225,6 +260,31 @@ class ForensicAnalyzer:
 def analyze_file(file_path: str) -> Dict[str, Any]:
     analyzer = ForensicAnalyzer()
     return analyzer.analyze_file(file_path)
+
+# -------------------------
+# Compatibility patch (safe): attach analyze_file to class if missing
+# -------------------------
+def _forensic_analyze_file_compat(self, file_path: str):
+    """
+    Compatibility wrapper: supports FileManager variants that return dict,
+    and ensures the three analysis stages run.
+    """
+    # attempt to read; if FileManager raises, propagate
+    content = self.file_manager.read_file(file_path)
+    if isinstance(content, dict):
+        if content.get("error"):
+            raise ValueError(f"File read error: {content.get('error')}")
+        content = content.get("text") or ""
+    if content is None:
+        content = ""
+    basic = self.analyze_log_basic(content)
+    suspicious = self.search_suspicious_patterns(content)
+    advanced = self.advanced_statistical_analysis(content)
+    return {"basic_analysis": basic, "suspicious_items": suspicious, "advanced_stats": advanced}
+
+# only attach if ForensicAnalyzer lacks analyze_file (safe no-op if present)
+if not hasattr(ForensicAnalyzer, "analyze_file"):
+    ForensicAnalyzer.analyze_file = _forensic_analyze_file_compat
 
 # -------------------------
 # CLI demo
